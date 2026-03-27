@@ -3,7 +3,7 @@
 #include <iostream>
 using namespace std;
 
-int ww = 600, wh = 400;
+int ww = 600, wh = 600;
 int xi, yi, xf, yf;
 
 // Clipping window
@@ -12,10 +12,6 @@ const float xmin = 100, xmax = 500, ymin = 100, ymax = 500;
 void putPixel(int x, int y)
 {
     glBegin(GL_POINTS);
-	if((x-300)^2+(x-300)^2-100^2<0){
-		glColor3f(1, 0, 0);
-		glVertex2i(x, y);
-	}
     glVertex2i(x, y);
     glEnd();
 }
@@ -53,38 +49,85 @@ void midpointCircle(int h, int k, int r)
 }
 
 // Bresenham Line Drawing
-void bresenhamAlg(int x0, int y0, int x1, int y1)
-{
-    int dx = abs(x1 - x0), dy = abs(y1 - y0);
-    int x = x0, y = y0;
-
-    int sx = (x1 > x0) ? 1 : -1;
-    int sy = (y1 > y0) ? 1 : -1;
-
-    bool isSteep = dy > dx;
-    if (isSteep) {
-        swap(dx, dy);
-    }
-
-    int d = 2 * dy - dx;
-
-    for (int i = 0; i <= dx; i++)
-    {
-        putPixel(x, y);
-
-        while (d >= 0)
-        {
-            if (isSteep) x += sx;
-            else y += sy;
-            d -= 2 * dx;
-        }
-
-        if (isSteep) y += sy;
-        else x += sx;
-
-        d += 2 * dy;
-    }
-}
+void bresenhamAlg (int x0, int y0, int x1, int y1)  
+{  
+  int dx = abs (x1 - x0);  
+  int dy = abs (y1 - y0);  
+  int x, y;  
+  if (dx >= dy)  
+  {  
+   int d = 2*dy-dx;  
+   int ds = 2*dy;  
+   int dt = 2*(dy-dx);  
+       if (x0 < x1)   
+       {  
+            x = x0;  
+            y = y0;  
+        }  
+        else  
+        {   
+            x = x1;  
+            y = y1;  
+            x1 = x0;  
+            y1 = y0;  
+        }  
+  putPixel (x, y);  
+  while (x < x1)  
+  {  
+    if (d < 0)  
+        d += ds;  
+        else {  
+             if (y < y1) {  
+               y++;  
+               d += dt;  
+				}   
+             else {  
+				y--;  
+				d += dt;             
+			 }  
+		}  
+        x++;  
+		putPixel (x, y);  
+    }  
+}  
+       else {   
+           int d = 2*dx-dy;  
+             int ds = 2*dx;  
+             int dt = 2*(dx-dy);  
+             if (y0 < y1) 
+			 {  
+				 x = x0;  
+				 y = y0;  
+             }  
+             else 
+			 {   
+				 x = x1;  
+				 y = y1;  
+				 y1 = y0;  
+				x1 = x0;  
+             }  
+            putPixel (x, y);   
+        while (y < y1)  
+        {  
+              if (d < 0)  
+                 d += ds;  
+             else {  
+                   if (x < x1)
+				   {  
+						x++;  
+						d += dt;  
+					} else 
+					{  
+						x--;  
+						d += dt;  
+					}                
+				}  
+			y++;  
+             putPixel (x, y);
+			 
+       }        
+	}  
+}  
 
 // Liang-Barsky Clipping
 bool liangBarsky(float x0, float y0, float x1, float y1,
@@ -131,12 +174,10 @@ void display()
 
     // Draw clipping window
     glColor3f(0, 0, 0);
-    glBegin(GL_LINE_LOOP);
-    glVertex2f(xmin, ymin);
-    glVertex2f(xmax, ymin);
-    glVertex2f(xmax, ymax);
-    glVertex2f(xmin, ymax);
-    glEnd();
+    bresenhamAlg(xmin, ymin,xmin, ymax);
+    bresenhamAlg(xmax, ymin,xmax, ymax);
+    bresenhamAlg(xmax, ymax,xmin, ymax);
+    bresenhamAlg(xmin, ymin,xmax, ymin);
 
 	glColor3f(0, 1, 0);
 	midpointCircle(300, 300, 100);
@@ -158,15 +199,27 @@ void mouse(int btn, int state, int x, int y)
 
         float xc0, yc0, xc1, yc1;
 
-        // Apply Liang-Barsky
-        if (liangBarsky(xi, yi, xf, yf,
-                        xmin, xmax, ymin, ymax,
-                        xc0, yc0, xc1, yc1))
-        {
-            // Draw clipped line (Blue)
-            glColor3f(0, 0, 1);
-            bresenhamAlg((int)xc0, (int)yc0, (int)xc1, (int)yc1);
-        }
+		// Apply Liang-Barsky
+		if (liangBarsky(xi, yi, xf, yf,
+						xmin, xmax, ymin, ymax,
+						xc0, yc0, xc1, yc1))
+		{
+			int cx = 300;
+			int cy = 300;
+			int r = 100;
+			int r2 = r * r; // squared radius
+
+			// Check clipped line endpoints inside circle
+			float d1 = (xc0 - cx)*(xc0 - cx) + (yc0 - cy)*(yc0 - cy);
+			float d2 = (xc1 - cx)*(xc1 - cx) + (yc1 - cy)*(yc1 - cy);
+
+			if (d1 < r2 && d2 < r2)
+				glColor3f(1, 0, 0); // RED
+			else
+				glColor3f(0, 0, 1); // BLUE
+
+			bresenhamAlg((int)xc0, (int)yc0, (int)xc1, (int)yc1);
+		}
 
         glFlush();
     }
@@ -180,7 +233,7 @@ void mouse(int btn, int state, int x, int y)
 
 void myinit()
 {
-    glClearColor(0.8, 0.9, 0.9, 1.0);
+    glClearColor(1.0, 1.0, 1.0, 1.0);
     glMatrixMode(GL_PROJECTION);
     gluOrtho2D(0, ww, 0, wh);
 }
